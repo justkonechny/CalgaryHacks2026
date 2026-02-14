@@ -10,10 +10,7 @@ export default function Home() {
         padding: "2rem",
       }}
     >
-      <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Welcome</h1>
-      <p style={{ color: "#666" }}>
-        Get started by editing <code>app/page.tsx</code>.
-      </p>
+      <h1 style={{ fontSize: "2rem" }}>a js app</h1>
     </main>
   );
 }
