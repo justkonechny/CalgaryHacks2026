@@ -86,6 +86,7 @@ export async function POST(req) {
         question: contentData.question,
         answers: contentData.answers,
         audioUrl: signedUrl,
+        prompt: query,
       }),
       { status: 200 },
     );
