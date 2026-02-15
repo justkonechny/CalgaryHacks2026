@@ -68,7 +68,7 @@ Tracks: - Attempts - Completion time - Mastery per concept
 - Next.js (React)
 
 ### Backend
-- Next.js API routes (Node.js)
+- Next.js  routes (Node.js)
 
 ### Database
 - MySQL (mysql2)
@@ -80,7 +80,7 @@ Tracks: - Attempts - Completion time - Mastery per concept
 - KEI API — Primary AI orchestration layer
 - Sora 2 (via KEI API) — Short-form vertical video generation
 - Groq API — Prompt refinement & structured topic decomposition
-- TTS generation integrated into the AI pipeline
+- ElevenLabs API — Text-To-Speech generation from text inputted
 
 ------------------------------------------------------------------------
 
