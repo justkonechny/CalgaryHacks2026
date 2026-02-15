@@ -4,30 +4,65 @@ import { useState, useRef, useCallback } from "react";
 import Video from "./components/Video";
 import LeftNav from "./components/LeftNav";
 
-const videos = [
-  { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" },
-  { src: "/videos/Steve Harvey be like： SHE SAID WHAT! [DoJQiFaLm9I].webm" },
-  {src: "/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm"}
-];
+const feeds = {
+  feed1: {
+    id: "feed1",
+    label: "Feed 1",
+    videos: [
+      { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" },
+      { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" },
+      { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" }
+    ],
+  },
+  feed2: {
+    id: "feed2",
+    label: "Feed 2",
+    videos: [
+      { src: '/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm' },
+      { src: '/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm' },
+      { src: '/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm' }
+      // Add more videos here
+    ],
+  },
+  feed3: {
+    id: "feed3",
+    label: "Feed 3",
+    videos: [
+      { src: '/videos/Steve Harvey be like： SHE SAID WHAT! [DoJQiFaLm9I].webm' },
+      { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" }
+    ],
+  },
+};
 
 export default function Home() {
+  const [activeFeedId, setActiveFeedId] = useState("feed1");
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [userHasUnmuted, setUserHasUnmuted] = useState(false);
   const feedRef = useRef(null);
 
+  const currentVideos = feeds[activeFeedId]?.videos ?? [];
+
   const scrollToIndex = useCallback((index) => {
     const el = feedRef.current;
     if (!el) return;
-    const clamped = Math.max(0, Math.min(index, videos.length - 1));
+    const clamped = Math.max(0, Math.min(index, currentVideos.length - 1));
     el.scrollTo({ top: clamped * window.innerHeight, behavior: "smooth" });
-  }, []);
+  }, [currentVideos.length]);
 
   const handleFeedScroll = useCallback(() => {
     const el = feedRef.current;
     if (!el) return;
     const vh = window.innerHeight;
     const index = Math.round(el.scrollTop / vh);
-    setCurrentVideoIndex(Math.max(0, Math.min(index, videos.length - 1)));
+    setCurrentVideoIndex(Math.max(0, Math.min(index, currentVideos.length - 1)));
+  }, [currentVideos.length]);
+
+  const handleSelectFeed = useCallback((feedId) => {
+    setActiveFeedId(feedId);
+    setCurrentVideoIndex(0);
+    setTimeout(() => {
+      feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }, 0);
   }, []);
 
   return (
@@ -41,9 +76,14 @@ export default function Home() {
         overflow: "hidden",
       }}
     >
-      <LeftNav />
+      <LeftNav
+        feeds={Object.values(feeds)}
+        activeFeedId={activeFeedId}
+        onSelectFeed={handleSelectFeed}
+      />
 
       <div
+        key={activeFeedId}
         ref={feedRef}
         className="feed-scroll"
         onScroll={handleFeedScroll}
@@ -57,7 +97,7 @@ export default function Home() {
           scrollBehavior: "smooth",
         }}
       >
-        {videos.map((item, i) => (
+        {currentVideos.map((item, i) => (
           <section
             key={i}
             style={{
@@ -125,12 +165,12 @@ export default function Home() {
           ↑
         </button>
         <span style={{ fontSize: "0.8rem", color: "#888" }}>
-          {currentVideoIndex + 1} / {videos.length}
+          {currentVideoIndex + 1} / {currentVideos.length}
         </span>
         <button
           type="button"
           onClick={() => scrollToIndex(currentVideoIndex + 1)}
-          disabled={currentVideoIndex === videos.length - 1}
+          disabled={currentVideoIndex === currentVideos.length - 1}
           aria-label="Next video"
           style={{
             width: "48px",
@@ -141,12 +181,12 @@ export default function Home() {
             borderRadius: "12px",
             border: "none",
             backgroundColor:
-              currentVideoIndex === videos.length - 1 ? "#1a1a1a" : "#2a2a2a",
+              currentVideoIndex === currentVideos.length - 1 ? "#1a1a1a" : "#2a2a2a",
             color:
-              currentVideoIndex === videos.length - 1 ? "#555" : "#fff",
+              currentVideoIndex === currentVideos.length - 1 ? "#555" : "#fff",
             fontSize: "1.25rem",
             cursor:
-              currentVideoIndex === videos.length - 1 ? "not-allowed" : "pointer",
+              currentVideoIndex === currentVideos.length - 1 ? "not-allowed" : "pointer",
             transition: "background-color 0.15s ease",
           }}
         >

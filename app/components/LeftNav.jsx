@@ -1,24 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
-const menus = [
-  { id: "A", label: "A", items: ["1", "2", "3"] },
-  { id: "B", label: "B", items: ["1", "2", "3"] },
-];
-
-export default function LeftNav() {
-  const [openIds, setOpenIds] = useState(new Set());
-
-  const toggle = (id) => {
-    setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
+export default function LeftNav({ feeds = [], activeFeedId, onSelectFeed }) {
   return (
     <nav
       style={{
@@ -46,76 +28,38 @@ export default function LeftNav() {
           letterSpacing: "0.05em",
         }}
       >
-        Topics
+        Feeds
       </h2>
-      {menus.map(({ id, label, items }) => {
-        const isOpen = openIds.has(id);
+      {feeds.map((feed) => {
+        const isActive = feed.id === activeFeedId;
         return (
-          <div key={id}>
-            <button
-              type="button"
-              onClick={() => toggle(id)}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.75rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                border: "none",
-                borderRadius: "8px",
-                backgroundColor: "transparent",
-                color: "#fff",
-                fontSize: "1rem",
-                cursor: "pointer",
-                transition: "background-color 0.15s ease",
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = "#2a2a2a";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <span>{label}</span>
-              <span style={{ opacity: 0.7, transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>▼</span>
-            </button>
-            {isOpen && (
-              <div
-                style={{
-                  paddingLeft: "0.75rem",
-                  paddingTop: "0.25rem",
-                  paddingBottom: "0.5rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.2rem",
-                }}
-              >
-                {items.map((item) => (
-                  <a
-                    key={item}
-                    href="#"
-                    style={{
-                      padding: "0.4rem 0.5rem",
-                      borderRadius: "6px",
-                      color: "#bbb",
-                      fontSize: "0.9rem",
-                      transition: "background-color 0.15s ease, color 0.15s ease",
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = "#2a2a2a";
-                      e.currentTarget.style.color = "#fff";
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color = "#bbb";
-                    }}
-                  >
-                    {item}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            key={feed.id}
+            type="button"
+            onClick={() => onSelectFeed?.(feed.id)}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.75rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              border: "none",
+              borderRadius: "8px",
+              backgroundColor: isActive ? "#2a2a2a" : "transparent",
+              color: "#fff",
+              fontSize: "1rem",
+              cursor: "pointer",
+              transition: "background-color 0.15s ease",
+            }}
+            onMouseOver={(e) => {
+              if (!isActive) e.currentTarget.style.backgroundColor = "#2a2a2a";
+            }}
+            onMouseOut={(e) => {
+              if (!isActive) e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            {feed.label}
+          </button>
         );
       })}
     </nav>
