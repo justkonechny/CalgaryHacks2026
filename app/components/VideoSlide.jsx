@@ -26,6 +26,7 @@ const VideoSlide = forwardRef(function VideoSlide(
     className,
     style,
     onSectionChange,
+    onAnsweredCorrectlyChange,
   },
   ref
 ) {
@@ -72,6 +73,10 @@ const VideoSlide = forwardRef(function VideoSlide(
     }),
     [hasQuestions, maxAllowedSection, sectionCount, onSectionChange, cancelAutoScroll]
   );
+
+  useEffect(() => {
+    onAnsweredCorrectlyChange?.(answeredCorrectly);
+  }, [answeredCorrectly, onAnsweredCorrectlyChange]);
 
   const handleCorrect = useCallback(
     (questionIndex) => {

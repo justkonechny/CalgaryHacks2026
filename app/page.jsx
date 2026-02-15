@@ -66,14 +66,21 @@ export default function Home() {
   const [activeFeedId, setActiveFeedId] = useState("feed1");
   const [sectionIndex, setSectionIndex] = useState(0);
   const [totalSections, setTotalSections] = useState(0);
+  const [answeredCorrectly, setAnsweredCorrectly] = useState([]);
   const videoSlideRef = useRef(null);
 
   const currentVideos = feeds[activeFeedId]?.videos ?? [];
   const currentQuestions = feeds[activeFeedId]?.questions ?? [];
 
+  const isOnQuestionSection = currentQuestions.length > 0 && sectionIndex % 2 === 1;
+  const currentQuestionIndex = isOnQuestionSection ? Math.floor(sectionIndex / 2) : -1;
+  const currentQuestionAnswered = currentQuestionIndex >= 0 && (answeredCorrectly[currentQuestionIndex] ?? false);
+  const canAdvancePastQuestion = !isOnQuestionSection || currentQuestionAnswered;
+
   const handleSelectFeed = useCallback((feedId) => {
     setActiveFeedId(feedId);
     setSectionIndex(0);
+    setAnsweredCorrectly([]);
     const count = (feeds[feedId]?.videos?.length ?? 0) * 2;
     setTotalSections(count);
   }, [feeds]);
@@ -95,6 +102,7 @@ export default function Home() {
     setActiveFeedId(id);
     setSectionIndex(0);
     setTotalSections(0);
+    setAnsweredCorrectly([]);
   }, [feeds]);
 
   const handleEmptyFeedConfigChange = useCallback((feedId, updates) => {
@@ -155,6 +163,7 @@ export default function Home() {
           videos={currentVideos}
           questions={currentQuestions}
           onSectionChange={handleSectionChange}
+          onAnsweredCorrectlyChange={setAnsweredCorrectly}
           className="videoSlideWrapper"
         />
       )}
@@ -178,7 +187,7 @@ export default function Home() {
           type="button"
           className="navBtn"
           onClick={goToNext}
-          disabled={sectionIndex >= displayTotal - 1}
+          disabled={sectionIndex >= displayTotal - 1 || !canAdvancePastQuestion}
           aria-label="Next"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
