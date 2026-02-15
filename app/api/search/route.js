@@ -1,23 +1,41 @@
 // app/api/search/route.js
+export const runtime = "nodejs";
+
 import Groq from "groq-sdk";
+import { getPool } from "@/lib/db";
 
 export async function POST(req) {
   try {
     const body = await req.json();
 
     const topic = String(body?.topic ?? "").trim();
-    const difficultyRaw = String(body?.difficulty ?? "medium").trim().toLowerCase();
+    const difficultyRaw = String(body?.difficulty ?? "medium")
+      .trim()
+      .toLowerCase();
     const sourcesIn = body?.sources ?? null;
 
+    const threadId =
+      body?.threadId != null && body.threadId !== ""
+        ? Number(body.threadId)
+        : null;
+
     if (!topic) {
-      return Response.json({ error: "Missing required field: topic" }, { status: 400 });
+      return Response.json(
+        { error: "Missing required field: topic" },
+        { status: 400 }
+      );
     }
 
-    const difficulty = ["easy", "medium", "hard"].includes(difficultyRaw) ? difficultyRaw : "medium";
+    const difficulty = ["easy", "medium", "hard"].includes(difficultyRaw)
+      ? difficultyRaw
+      : "medium";
     const sources = normalizeSources(sourcesIn);
 
     if (!process.env.GROQ_API_KEY) {
-      return Response.json({ error: "Missing GROQ_API_KEY in environment" }, { status: 500 });
+      return Response.json(
+        { error: "Missing GROQ_API_KEY in environment" },
+        { status: 500 }
+      );
     }
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -58,10 +76,81 @@ export async function POST(req) {
       );
     }
 
+    // If a threadId is provided, store topic/difficulty/sources in the DB
+    if (Number.isInteger(threadId) && threadId >= 1) {
+      await saveThreadPromptDifficultySources({
+        threadId,
+        topic,
+        difficulty,
+        sources,
+      });
+    }
+
     return Response.json(validated.value);
   } catch (err) {
     console.error("Groq route error:", err);
-    return Response.json({ error: err?.message ?? "Server error" }, { status: 500 });
+    return Response.json(
+      { error: err?.message ?? "Server error" },
+      { status: 500 }
+    );
+  }
+}
+
+async function saveThreadPromptDifficultySources({
+  threadId,
+  topic,
+  difficulty,
+  sources,
+}) {
+  const pool = getPool();
+  const conn = await pool.getConnection();
+
+  try {
+    await conn.beginTransaction();
+
+    // Ensure thread exists
+    const [rows] = await conn.query(`SELECT id FROM Thread WHERE id = ?`, [
+      threadId,
+    ]);
+    if (!rows || rows.length === 0) {
+      await conn.rollback();
+      throw new Error(`Thread not found (id=${threadId})`);
+    }
+
+    // 1) Save prompt
+    await conn.query(`UPDATE Thread SET prompt = ? WHERE id = ?`, [
+      topic,
+      threadId,
+    ]);
+
+    // 2) Save difficulty into ThreadSetting (upsert)
+    await conn.query(
+      `INSERT INTO ThreadSetting (threadId, settingKey, settingValue)
+       VALUES (?, 'difficulty', ?)
+       ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue)`,
+      [threadId, difficulty]
+    );
+
+    // 3) Replace sources in ThreadSource
+    await conn.query(`DELETE FROM ThreadSource WHERE threadId = ?`, [threadId]);
+
+    if (Array.isArray(sources) && sources.length) {
+      const values = sources.map((src, idx) => [threadId, idx, src]);
+      await conn.query(
+        `INSERT INTO ThreadSource (threadId, sourceIndex, source)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    await conn.commit();
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (_) {}
+    throw e;
+  } finally {
+    conn.release();
   }
 }
 
@@ -146,13 +235,21 @@ Return JSON only, matching the schema exactly.`;
 function normalizeSources(sourcesIn) {
   if (!sourcesIn) return [];
   if (Array.isArray(sourcesIn)) {
-    return sourcesIn.map(String).map((s) => s.trim()).filter(Boolean);
+    return sourcesIn
+      .map(String)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
-  // allow newline-delimited sources
-  return String(sourcesIn)
-    .split(/\r?\n/)
-    .map((x) => x.trim())
-    .filter(Boolean);
+
+  // allow newline-delimited OR comma-delimited sources
+  const str = String(sourcesIn);
+
+  // If it contains newlines, treat as newline list; otherwise allow commas.
+  const parts = str.includes("\n")
+    ? str.split(/\r?\n/)
+    : str.split(",");
+
+  return parts.map((x) => x.trim()).filter(Boolean);
 }
 
 function safeParseJson(text) {
@@ -185,28 +282,38 @@ function validateShape(obj, fallback) {
 
   const topic = typeof obj?.topic === "string" ? obj.topic.trim() : "";
   const difficulty =
-    typeof obj?.difficulty === "string" ? obj.difficulty.trim().toLowerCase() : "";
+    typeof obj?.difficulty === "string"
+      ? obj.difficulty.trim().toLowerCase()
+      : "";
   const sources = Array.isArray(obj?.sources)
-    ? obj.sources.filter((s) => typeof s === "string").map((s) => s.trim()).filter(Boolean)
+    ? obj.sources
+        .filter((s) => typeof s === "string")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : null;
   const units = Array.isArray(obj?.units) ? obj.units : null;
 
   if (!topic) issues.push("Missing/invalid: topic");
-  if (!["easy", "medium", "hard"].includes(difficulty)) issues.push("Missing/invalid: difficulty");
+  if (!["easy", "medium", "hard"].includes(difficulty))
+    issues.push("Missing/invalid: difficulty");
   if (!sources) issues.push("Missing/invalid: sources (must be array of strings)");
-  if (!units || units.length !== 5) issues.push("Missing/invalid: units (must be length 5)");
+  if (!units || units.length !== 5)
+    issues.push("Missing/invalid: units (must be length 5)");
 
   if (units) {
     units.forEach((u, i) => {
       if (!u || typeof u !== "object") issues.push(`Unit ${i + 1}: must be object`);
       if (u?.index !== i + 1) issues.push(`Unit ${i + 1}: index must be ${i + 1}`);
-      if (typeof u?.title !== "string" || !u.title.trim()) issues.push(`Unit ${i + 1}: missing title`);
-      if (typeof u?.script !== "string" || !u.script.trim()) issues.push(`Unit ${i + 1}: missing script`);
+      if (typeof u?.title !== "string" || !u.title.trim())
+        issues.push(`Unit ${i + 1}: missing title`);
+      if (typeof u?.script !== "string" || !u.script.trim())
+        issues.push(`Unit ${i + 1}: missing script`);
 
       const q = u?.quiz;
       if (!q || typeof q !== "object") issues.push(`Unit ${i + 1}: missing quiz object`);
       if (q) {
-        if (typeof q?.question !== "string" || !q.question.trim()) issues.push(`Unit ${i + 1}: missing quiz.question`);
+        if (typeof q?.question !== "string" || !q.question.trim())
+          issues.push(`Unit ${i + 1}: missing quiz.question`);
         if (
           !Array.isArray(q?.options) ||
           q.options.length !== 4 ||
@@ -214,7 +321,11 @@ function validateShape(obj, fallback) {
         ) {
           issues.push(`Unit ${i + 1}: quiz.options must be array of 4 strings`);
         }
-        if (typeof q?.correctIndex !== "number" || q.correctIndex < 0 || q.correctIndex > 3) {
+        if (
+          typeof q?.correctIndex !== "number" ||
+          q.correctIndex < 0 ||
+          q.correctIndex > 3
+        ) {
           issues.push(`Unit ${i + 1}: quiz.correctIndex must be 0..3`);
         }
         if (typeof q?.explanation !== "string" || !q.explanation.trim()) {
@@ -231,7 +342,9 @@ function validateShape(obj, fallback) {
     ok: true,
     value: {
       topic: topic || fallback.topic,
-      difficulty: ["easy", "medium", "hard"].includes(difficulty) ? difficulty : fallback.difficulty,
+      difficulty: ["easy", "medium", "hard"].includes(difficulty)
+        ? difficulty
+        : fallback.difficulty,
       sources: sources || fallback.sources,
       units,
     },
