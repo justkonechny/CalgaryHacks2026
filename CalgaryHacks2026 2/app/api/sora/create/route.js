@@ -13,17 +13,18 @@ export async function POST(req) {
       return Response.json({ error: "Missing prompt" }, { status: 400 });
     }
 
-    const threadId = body?.threadId != null ? Number(body.threadId) : null;
-
     const apiKey = process.env.KIE_API_KEY;
     if (!apiKey) {
-      return Response.json({ error: "Missing KIE_API_KEY in .env.local" }, { status: 500 });
+      return Response.json(
+        { error: "Missing KIE_API_KEY in .env.local" },
+        { status: 500 }
+      );
     }
 
     // Defaults optimized for TikTok-style vertical video.
     const aspect_ratio = body?.aspect_ratio === "landscape" ? "landscape" : "portrait";
     const n_frames = body?.n_frames === "15" ? "15" : "10"; // must be "10" or "15"
-    const size = body?.size === "high" ? "high" : "high"; // default high (matches docs example)
+    const size = body?.size === "high" ? "high" : "high";
     const remove_watermark = Boolean(body?.remove_watermark);
     const upload_method = body?.upload_method === "oss" ? "oss" : "s3";
 
@@ -66,36 +67,36 @@ export async function POST(req) {
       return Response.json({ error: "No taskId returned", raw: data }, { status: 500 });
     }
 
-    if (Number.isInteger(threadId) && threadId >= 1) {
-      const pool = getPool();
-      const [threadRows] = await pool.query(
-        `SELECT id FROM Thread WHERE id = ?`,
-        [threadId]
-      );
-      if (threadRows.length === 0) {
-        return Response.json({ error: "Thread not found", taskId }, { status: 404 });
-      }
-      const [indexRows] = await pool.query(
-        `SELECT COALESCE(MAX(\`index\`), 0) + 1 AS nextIndex FROM Video WHERE threadId = ?`,
-        [threadId]
-      );
-      const nextIndex = indexRows[0]?.nextIndex ?? 1;
-      if (nextIndex > 5) {
-        return Response.json(
-          { error: "Thread already has maximum videos (5)", taskId },
-          { status: 400 }
-        );
-      }
-      const [insertResult] = await pool.query(
-        `INSERT INTO Video (threadId, \`index\`, scriptText, taskId, duration, blobName, blobUrl, videoUrl)
-         VALUES (?, ?, ?, ?, 1, NULL, NULL, NULL)`,
-        [threadId, nextIndex, prompt, taskId]
-      );
-      const videoId = insertResult.insertId;
-      return Response.json({ taskId, threadId, videoId });
-    }
+    // ✅ Insert DB rows immediately (Thread + Video)
+    const pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    return Response.json({ taskId });
+      const [threadResult] = await conn.query(
+        `INSERT INTO Thread (prompt, status) VALUES (?, 'generating')`,
+        [prompt]
+      );
+
+      const threadId = threadResult.insertId;
+
+      const [videoResult] = await conn.query(
+        `INSERT INTO Video (threadId, \`index\`, scriptText, taskId, duration, blobName, blobUrl, videoUrl)
+         VALUES (?, 1, ?, ?, 1, NULL, NULL, NULL)`,
+        [threadId, prompt, taskId]
+      );
+
+      const videoId = videoResult.insertId;
+
+      await conn.commit();
+
+      return Response.json({ taskId, threadId, videoId });
+    } catch (e) {
+      await conn.rollback();
+      return Response.json({ error: String(e?.message || e) }, { status: 500 });
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     return Response.json({ error: String(err?.message || err) }, { status: 500 });
   }

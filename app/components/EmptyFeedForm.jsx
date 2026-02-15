@@ -39,6 +39,7 @@ export default function EmptyFeedForm({
   topicPrompt = "",
   sources = "",
   difficulty = "medium",
+  threadId = null,
   onChange,
   onVideoReady,
   className,
@@ -54,7 +55,7 @@ export default function EmptyFeedForm({
     setIsGenerating(true);
     setError("");
 
-    const result = await createSoraVideo(text);
+    const result = await createSoraVideo(text, threadId);
 
     setIsGenerating(false);
 

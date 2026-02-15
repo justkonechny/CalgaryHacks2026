@@ -15,7 +15,6 @@ export async function POST(req) {
       );
     }
 
-    // Hard env validation (prevents undefined.split anywhere)
     const conn = process.env.AZURE_STORAGE_CONNECTION_STRING;
     const container = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
@@ -47,11 +46,15 @@ export async function POST(req) {
     console.log("[azure/ingest] bytes:", buffer.length);
 
     const blobName = `video-${taskId}.mp4`;
+
     const { plainUrl, signedUrl } = await uploadMp4ToAzure({ buffer, blobName });
 
     console.log("[azure/ingest] uploaded:", plainUrl);
 
+    // ✅ Update DB: store blobUrl/blobName and also store the *current* SAS in videoUrl
     const pool = getPool();
+
+    // update Video row
     const [videoUpdate] = await pool.query(
       `UPDATE Video
        SET blobName = ?, blobUrl = ?, videoUrl = ?
@@ -66,6 +69,7 @@ export async function POST(req) {
       );
     }
 
+    // mark thread ready (via join)
     await pool.query(
       `UPDATE Thread t
        JOIN Video v ON v.threadId = t.id
@@ -79,13 +83,8 @@ export async function POST(req) {
     console.error("[azure/ingest] ERROR:", e);
 
     const message =
-      e && typeof e === "object" && "message" in e
-        ? String(e.message)
-        : String(e);
+      e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
 
-    return Response.json(
-      { error: message },
-      { status: 500 }
-    );
+    return Response.json({ error: message }, { status: 500 });
   }
 }

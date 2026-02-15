@@ -42,8 +42,7 @@ export function makeBlobReadSasUrl({
 
   const { accountName, accountKey } = getAccountNameAndKey();
 
-  // If we can't generate SAS (missing key), return the plain URL.
-  // This will only play if the container is public.
+  // If we can't generate SAS, return the plain URL (only works if container is public)
   if (!accountName || !accountKey || !containerName || !blobName) {
     return blobUrl;
   }
