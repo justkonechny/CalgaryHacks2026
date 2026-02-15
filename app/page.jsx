@@ -3,9 +3,10 @@
 import { useState, useRef, useCallback } from "react";
 import VideoSlide from "./components/VideoSlide";
 import LeftNav from "./components/LeftNav";
+import EmptyFeedForm from "./components/EmptyFeedForm";
 import "./page.css";
 
-const feeds = {
+const initialFeeds = {
   feed1: {
     id: "feed1",
     label: "Feed 1",
@@ -49,7 +50,19 @@ const feeds = {
   },
 };
 
+function getNextNewFeedLabel(existingLabels) {
+  const hasUnnumbered = existingLabels.includes("New feed");
+  const numbers = existingLabels
+    .map((l) => /^New feed \((\d+)\)$/.exec(l))
+    .filter(Boolean)
+    .map((m) => parseInt(m[1], 10));
+  const maxN = numbers.length ? Math.max(...numbers) : 0;
+  if (!hasUnnumbered && maxN === 0) return "New feed";
+  return `New feed (${maxN + 1})`;
+}
+
 export default function Home() {
+  const [feeds, setFeeds] = useState(initialFeeds);
   const [activeFeedId, setActiveFeedId] = useState("feed1");
   const [sectionIndex, setSectionIndex] = useState(0);
   const [totalSections, setTotalSections] = useState(0);
@@ -63,6 +76,39 @@ export default function Home() {
     setSectionIndex(0);
     const count = (feeds[feedId]?.videos?.length ?? 0) * 2;
     setTotalSections(count);
+  }, [feeds]);
+
+  const handleCreateFeed = useCallback(() => {
+    const id = `new-feed-${Date.now()}`;
+    const existingLabels = Object.values(feeds).map((f) => f.label);
+    const label = getNextNewFeedLabel(existingLabels);
+    const newFeed = {
+      id,
+      label,
+      videos: [],
+      questions: [],
+      topicPrompt: "",
+      sources: "",
+      difficulty: "medium",
+    };
+    setFeeds((prev) => ({ ...prev, [id]: newFeed }));
+    setActiveFeedId(id);
+    setSectionIndex(0);
+    setTotalSections(0);
+  }, [feeds]);
+
+  const handleEmptyFeedConfigChange = useCallback((feedId, updates) => {
+    setFeeds((prev) => ({
+      ...prev,
+      [feedId]: { ...prev[feedId], ...updates },
+    }));
+  }, []);
+
+  const handleRenameFeed = useCallback((feedId, newLabel) => {
+    setFeeds((prev) => ({
+      ...prev,
+      [feedId]: { ...prev[feedId], label: newLabel.trim() || prev[feedId].label },
+    }));
   }, []);
 
   const handleSectionChange = useCallback((index, total) => {
@@ -71,10 +117,12 @@ export default function Home() {
   }, []);
 
   const goToPrev = useCallback(() => {
+    videoSlideRef.current?.cancelAutoScroll?.();
     videoSlideRef.current?.scrollToSection(sectionIndex - 1);
   }, [sectionIndex]);
 
   const goToNext = useCallback(() => {
+    videoSlideRef.current?.cancelAutoScroll?.();
     videoSlideRef.current?.scrollToSection(sectionIndex + 1);
   }, [sectionIndex]);
 
@@ -86,16 +134,30 @@ export default function Home() {
         feeds={Object.values(feeds)}
         activeFeedId={activeFeedId}
         onSelectFeed={handleSelectFeed}
+        onCreateFeed={handleCreateFeed}
+        onRenameFeed={handleRenameFeed}
       />
 
-      <VideoSlide
-        ref={videoSlideRef}
-        key={activeFeedId}
-        videos={currentVideos}
-        questions={currentQuestions}
-        onSectionChange={handleSectionChange}
-        className="videoSlideWrapper"
-      />
+      {currentVideos.length === 0 ? (
+        <EmptyFeedForm
+          topicPrompt={feeds[activeFeedId]?.topicPrompt ?? ""}
+          sources={feeds[activeFeedId]?.sources ?? ""}
+          difficulty={feeds[activeFeedId]?.difficulty ?? "medium"}
+          onChange={(updates) =>
+            handleEmptyFeedConfigChange(activeFeedId, updates)
+          }
+          className="videoSlideWrapper"
+        />
+      ) : (
+        <VideoSlide
+          ref={videoSlideRef}
+          key={activeFeedId}
+          videos={currentVideos}
+          questions={currentQuestions}
+          onSectionChange={handleSectionChange}
+          className="videoSlideWrapper"
+        />
+      )}
 
       <aside className="navAside">
         <button
@@ -105,7 +167,9 @@ export default function Home() {
           disabled={sectionIndex === 0}
           aria-label="Previous"
         >
-          ↑
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M18 15l-6-6-6 6" />
+          </svg>
         </button>
         <span className="navCounter">
           {sectionIndex + 1} / {displayTotal}
@@ -117,7 +181,9 @@ export default function Home() {
           disabled={sectionIndex >= displayTotal - 1}
           aria-label="Next"
         >
-          ↓
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </button>
       </aside>
     </main>

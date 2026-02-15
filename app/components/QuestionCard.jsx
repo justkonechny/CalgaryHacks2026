@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import "./QuestionCard.css";
 
 const COOLDOWN_SECONDS = 5;
 
 export default function QuestionCard({ question, onCorrect, answered = false }) {
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [showWrong, setShowWrong] = useState(false);
+  const [wrongClickedIndices, setWrongClickedIndices] = useState(() => new Set());
   const timeoutRef = useRef(null);
   const intervalRef = useRef(null);
 
@@ -35,7 +37,7 @@ export default function QuestionCard({ question, onCorrect, answered = false }) 
   };
 
   const handleOptionClick = (optionIndex) => {
-    if (answered || cooldownRemaining > 0) return;
+    if (answered || cooldownRemaining > 0 || wrongClickedIndices.has(optionIndex)) return;
     if (optionIndex === question.correctIndex) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (intervalRef.current) {
@@ -46,79 +48,43 @@ export default function QuestionCard({ question, onCorrect, answered = false }) 
       setShowWrong(false);
       onCorrect();
     } else {
+      setWrongClickedIndices((prev) => new Set(prev).add(optionIndex));
       startCooldown();
     }
   };
 
   if (!question || !question.options || question.options.length !== 4) {
-    return (
-      <div style={{ padding: "1rem", color: "#888" }}>Invalid question</div>
-    );
+    return <div className="questionCardInvalid">Invalid question</div>;
   }
 
-  const optionsDisabled = answered || cooldownRemaining > 0;
+  const isOptionDisabled = (i) => answered || cooldownRemaining > 0 || wrongClickedIndices.has(i);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: "480px",
-        padding: "1.5rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
-      }}
-    >
-      <p
-        style={{
-          margin: 0,
-          fontSize: "1.125rem",
-          fontWeight: 600,
-          color: "#fff",
-          lineHeight: 1.4,
-        }}
-      >
-        {question.text}
-      </p>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.5rem",
-        }}
-      >
+    <div className="questionCard">
+      <p className="questionCardText">{question.text}</p>
+      <div className="questionCardOptions">
         {question.options.map((option, i) => (
           <button
             key={i}
             type="button"
             onClick={() => handleOptionClick(i)}
-            disabled={optionsDisabled}
-            style={{
-              padding: "0.75rem 1rem",
-              textAlign: "left",
-              fontSize: "0.95rem",
-              border: "1px solid #2a2a2a",
-              borderRadius: "8px",
-              backgroundColor: optionsDisabled ? "#1a1a1a" : "#252525",
-              color: optionsDisabled ? "#555" : "#fff",
-              cursor: optionsDisabled ? "not-allowed" : "pointer",
-              transition: "background-color 0.15s ease, border-color 0.15s ease",
-            }}
+            disabled={isOptionDisabled(i)}
+            className={`questionCardOption ${isOptionDisabled(i) ? "questionCardOption--disabled" : ""} ${wrongClickedIndices.has(i) ? "questionCardOption--incorrect" : ""} ${answered && i === question.correctIndex ? "questionCardOption--correct" : ""}`}
           >
             {option}
           </button>
         ))}
       </div>
-      {answered && (
-        <p style={{ margin: 0, fontSize: "0.9rem", color: "#4ade80" }}>
-          Correct!
-        </p>
-      )}
-      {showWrong && cooldownRemaining > 0 && (
-        <p style={{ margin: 0, fontSize: "0.9rem", color: "#f87171" }}>
-          Incorrect. Try again in {cooldownRemaining}s
-        </p>
-      )}
+      <div className="questionCardFeedback">
+        {answered && (
+          <p className="questionCardFeedbackCorrect">Correct!</p>
+        )}
+        {showWrong && cooldownRemaining > 0 && (
+          <p className="questionCardFeedbackIncorrect">
+            Incorrect. Try again in {cooldownRemaining}s
+          </p>
+        )}
+      </div>
     </div>
   );
 }

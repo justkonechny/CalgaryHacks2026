@@ -6,3 +6,8 @@
 .videoSlideScroll::-webkit-scrollbar {
   display: none;
 }
+.questionContent {
+  position: relative;
+  z-index: 11;
+}
+

@@ -1,0 +1,77 @@
+.questionCard {
+  width: 100%;
+  max-width: 480px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.questionCardText {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.questionCardOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.questionCardOption {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.95rem;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  background-color: #252525;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.questionCardOption--disabled {
+  background-color: #1a1a1a;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.questionCardOption.questionCardOption--incorrect {
+  background-color: #8b4a54;
+  border-color: #7a4048;
+  color: #e8d4d6;
+  cursor: not-allowed;
+}
+
+.questionCardOption.questionCardOption--correct {
+  background-color: #166534;
+  border-color: #14532d;
+  color: #dcfce7;
+  cursor: default;
+}
+
+.questionCardFeedback {
+  min-height: 1.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.questionCardFeedbackCorrect {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4ade80;
+}
+
+.questionCardFeedbackIncorrect {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #f87171;
+}
+
+.questionCardInvalid {
+  padding: 1rem;
+  color: #888;
+}

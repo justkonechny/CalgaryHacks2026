@@ -5,6 +5,8 @@ import Video from "./Video";
 import QuestionCard from "./QuestionCard";
 import "./VideoSlide.css";
 
+const AUTO_SCROLL_DELAY_MS = 1000;
+
 function normalizeVideo(item) {
   if (typeof item === "string") return { src: item, poster: undefined };
   return { src: item.src, poster: item.poster };
@@ -35,6 +37,7 @@ const VideoSlide = forwardRef(function VideoSlide(
   const isClampingRef = useRef(false);
   const lastReportedSectionRef = useRef(-1);
   const maxAllowedSectionRef = useRef(0);
+  const autoScrollTimeoutRef = useRef(null);
 
   const hasQuestions =
     questions.length > 0 && questions.length === videos.length;
@@ -44,6 +47,13 @@ const VideoSlide = forwardRef(function VideoSlide(
     ? getMaxAllowedSectionIndex(answeredCorrectly)
     : 0;
   maxAllowedSectionRef.current = maxAllowedSection;
+
+  const cancelAutoScroll = useCallback(() => {
+    if (autoScrollTimeoutRef.current != null) {
+      clearTimeout(autoScrollTimeoutRef.current);
+      autoScrollTimeoutRef.current = null;
+    }
+  }, []);
 
   useImperativeHandle(
     ref,
@@ -58,17 +68,38 @@ const VideoSlide = forwardRef(function VideoSlide(
         lastReportedSectionRef.current = clamped;
         onSectionChange?.(clamped, sectionCount);
       },
+      cancelAutoScroll,
     }),
-    [hasQuestions, maxAllowedSection, sectionCount, onSectionChange]
+    [hasQuestions, maxAllowedSection, sectionCount, onSectionChange, cancelAutoScroll]
   );
 
-  const handleCorrect = useCallback((questionIndex) => {
-    setAnsweredCorrectly((prev) => {
-      const next = [...prev];
-      next[questionIndex] = true;
-      return next;
-    });
-  }, []);
+  const handleCorrect = useCallback(
+    (questionIndex) => {
+      setAnsweredCorrectly((prev) => {
+        const next = [...prev];
+        next[questionIndex] = true;
+        return next;
+      });
+      if (autoScrollTimeoutRef.current != null) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
+      autoScrollTimeoutRef.current = setTimeout(() => {
+        autoScrollTimeoutRef.current = null;
+        const el = scrollRef.current;
+        if (!el || !hasQuestions) return;
+        const vh = el.clientHeight;
+        if (vh <= 0) return;
+        const nextSection = questionIndex * 2 + 2;
+        const maxAllowed = maxAllowedSectionRef.current;
+        const clamped = Math.min(nextSection, maxAllowed);
+        el.scrollTo({ top: clamped * vh, behavior: "smooth" });
+        lastReportedSectionRef.current = clamped;
+        onSectionChange?.(clamped, sectionCount);
+      }, AUTO_SCROLL_DELAY_MS);
+    },
+    [hasQuestions, sectionCount, onSectionChange]
+  );
 
   const reportSection = useCallback(
     (sectionIndex) => {
@@ -116,9 +147,22 @@ const VideoSlide = forwardRef(function VideoSlide(
   }, [hasQuestions, sectionCount, reportSection]);
 
   useEffect(() => {
+    return () => {
+      if (autoScrollTimeoutRef.current != null) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el || !hasQuestions) return;
     const onWheel = (e) => {
+      if (autoScrollTimeoutRef.current != null) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
       const vh = el.clientHeight;
       if (vh <= 0) return;
       const sectionIndex = Math.round(el.scrollTop / vh);
@@ -129,6 +173,10 @@ const VideoSlide = forwardRef(function VideoSlide(
     };
     let touchStartY = 0;
     const onTouchStart = (e) => {
+      if (autoScrollTimeoutRef.current != null) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
       touchStartY = e.touches[0].clientY;
     };
     const onTouchMove = (e) => {

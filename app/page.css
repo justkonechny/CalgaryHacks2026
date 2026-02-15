@@ -32,13 +32,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 50%;
   border: none;
   background-color: #2a2a2a;
   color: #fff;
-  font-size: 1.25rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
+}
+
+.navBtn:hover:not(:disabled) {
+  background-color: #333;
+}
+
+.navBtn:focus-visible {
+  outline: 2px solid #555;
+  outline-offset: 2px;
 }
 
 .navBtn:disabled {
