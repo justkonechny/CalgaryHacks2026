@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Calgary Hacks",
-  description: "A Next.js web app starter for Calgary Hacks",
+  title: "Sora",
+  description: "TikTok-style feed + Sora generation via Kie API"
 };
 
 export default function RootLayout({ children }) {

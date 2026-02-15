@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 "use client";
 
 import { useState, useRef, useCallback } from "react";
@@ -9,6 +10,9 @@ const videos = [
   { src: "/videos/Steve Harvey be like： SHE SAID WHAT! [DoJQiFaLm9I].webm" },
   {src: "/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm"}
 ];
+=======
+import VideoFeed from "@/components/VideoFeed";
+>>>>>>> Stashed changes
 
 export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -31,6 +35,7 @@ export default function Home() {
   }, []);
 
   return (
+<<<<<<< Updated upstream
     <main
       style={{
         height: "100vh",
@@ -153,6 +158,10 @@ export default function Home() {
           ↓
         </button>
       </aside>
+=======
+    <main className="app">
+      <VideoFeed />
+>>>>>>> Stashed changes
     </main>
   );
 }
