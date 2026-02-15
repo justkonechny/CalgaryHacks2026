@@ -12,12 +12,13 @@ function getExtFromContentType(contentType) {
 export async function POST(req) {
   try {
     console.log("Container:", process.env.AZURE_STORAGE_CONTAINER_NAME);
-    const contentType = req.headers.get("content-type") || "application/octet-stream";
+    const contentType =
+      req.headers.get("content-type") || "application/octet-stream";
     const bytes = await req.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
-      process.env.AZURE_STORAGE_CONNECTION_STRING
+      process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
 
     const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "videos";
@@ -31,8 +32,11 @@ export async function POST(req) {
 
     await blockBlobClient.uploadData(buffer, {
       blobHTTPHeaders: {
-        blobContentType: contentType === "application/octet-stream" ? "video/mp4" : contentType
-      }
+        blobContentType:
+          contentType === "application/octet-stream"
+            ? "video/mp4"
+            : contentType,
+      },
     });
 
     // Public container: URL is directly playable
@@ -40,6 +44,8 @@ export async function POST(req) {
 
     return Response.json({ url, blobName });
   } catch (err) {
-    return new Response(`Upload failed: ${err?.message || err}`, { status: 500 });
+    return new Response(`Upload failed: ${err?.message || err}`, {
+      status: 500,
+    });
   }
 }

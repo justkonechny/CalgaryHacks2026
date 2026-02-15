@@ -64,13 +64,20 @@ export async function POST(req) {
     console.log("Content generated with audio:", signedUrl);
 
     // 4. TODO: Save to database
-    // await saveToDatabase({
-    //   fact: contentData.fact,
-    //   question: contentData.question,
-    //   answers: contentData.answers,
-    //   audioUrl: signedUrl,
-    //   query: query,
-    // });
+    await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/save-content`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fact: contentData.fact,
+          question: contentData.question,
+          answers: contentData.answers,
+          audioUrl: signedUrl,
+          query: query,
+        }),
+      },
+    );
 
     // 5. Return everything
     return new Response(
