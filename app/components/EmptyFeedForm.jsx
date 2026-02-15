@@ -90,7 +90,8 @@ export default function EmptyFeedForm({
     }
 
     // 2) Generate the video from the prompt (existing flow)
-    const result = await createSoraVideo(text, threadId);
+    try {
+      const result = await createSoraVideo(text, threadId);
 
       // setIsGenerating(false);
 
