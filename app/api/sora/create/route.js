@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { getPool } from "@/lib/db";
+import { buildMicroLectureVideoPrompt } from "@/lib/videoPrompt";
 
 // Creates a Sora 2 Pro Text-to-Video job on Kie.
 // Docs: https://docs.kie.ai/market/sora2/sora-2-text-to-video
@@ -8,9 +9,17 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    const prompt = String(body?.prompt || "").trim();
+    const topic = String(body?.topic ?? "").trim();
+    const rawPrompt = String(body?.prompt ?? "").trim();
+    // Require at least one of topic or prompt; topic takes precedence for micro-lecture style.
+    const prompt = topic
+      ? buildMicroLectureVideoPrompt(topic)
+      : rawPrompt;
     if (!prompt) {
-      return Response.json({ error: "Missing prompt" }, { status: 400 });
+      return Response.json(
+        { error: "Missing prompt or topic" },
+        { status: 400 }
+      );
     }
 
     const threadId = body?.threadId != null ? Number(body.threadId) : null;

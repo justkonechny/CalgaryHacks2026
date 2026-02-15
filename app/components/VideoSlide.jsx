@@ -35,7 +35,7 @@ const VideoSlide = forwardRef(function VideoSlide(
   },
   ref
 ) {
-  const [userHasUnmuted, setUserHasUnmuted] = useState(false);
+  const [userHasStartedPlayback, setUserHasStartedPlayback] = useState(false);
   const [answeredCorrectly, setAnsweredCorrectly] = useState(() =>
     questions.length ? Array(questions.length).fill(false) : []
   );
@@ -299,8 +299,9 @@ const VideoSlide = forwardRef(function VideoSlide(
                   audioSrc={audioSrc}
                   audioDurationMs={audioDurationMs}
                   controls={false}
-                  muted={!userHasUnmuted}
-                  onUnmute={() => setUserHasUnmuted(true)}
+                  muted={true}
+                  autoPlayOnScroll={userHasStartedPlayback}
+                  onUserStartedPlayback={() => setUserHasStartedPlayback(true)}
                   style={{
                     width: "100%",
                     height: "100%",
@@ -368,8 +369,9 @@ const VideoSlide = forwardRef(function VideoSlide(
                   audioSrc={audioSrc}
                   audioDurationMs={audioDurationMs}
                   controls={false}
-                  muted={!userHasUnmuted}
-                  onUnmute={() => setUserHasUnmuted(true)}
+                  muted={true}
+                  autoPlayOnScroll={userHasStartedPlayback}
+                  onUserStartedPlayback={() => setUserHasStartedPlayback(true)}
                   style={{
                     width: "100%",
                     height: "100%",

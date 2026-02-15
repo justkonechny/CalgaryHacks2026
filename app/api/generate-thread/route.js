@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { getPool } from "@/lib/db";
 import { uploadAudioToAzure } from "@/lib/azureUpload";
+import { buildMicroLectureVideoPrompt } from "@/lib/videoPrompt";
 
 export async function POST(req) {
   try {
@@ -119,7 +120,7 @@ export async function POST(req) {
     const payload = {
       model: "sora-2-text-to-video",
       input: {
-        prompt: topic,
+        prompt: buildMicroLectureVideoPrompt(topic),
         aspect_ratio: "portrait",
         n_frames: "10",
         size: "high",
