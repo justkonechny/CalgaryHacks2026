@@ -9,9 +9,27 @@ body {
   max-width: 100vw;
   min-height: 100vh;
   font-family: system-ui, -apple-system, sans-serif;
+  background-color: #0f0f0f;
+  color: #fff;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Hide scrollbar on feed while keeping scroll */
+.feed-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.feed-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Video rounded corners - cross-browser fix */
+.video-rounded video {
+  border-radius: inherit;
+  -webkit-clip-path: inset(0% 0% 0% 0% round 12px);
+  clip-path: inset(0% 0% 0% 0% round 12px);
 }
