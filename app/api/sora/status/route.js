@@ -1,3 +1,4 @@
+// app/api/sora/status/route.js
 export const runtime = "nodejs";
 
 export async function GET(req) {
@@ -13,34 +14,39 @@ export async function GET(req) {
 
   const resp = await fetch(
     `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`,
-    {
-      headers: { Authorization: `Bearer ${process.env.KIE_API_KEY}` }
-    }
+    { headers: { Authorization: `Bearer ${process.env.KIE_API_KEY}` } }
   );
 
-  const data = await resp.json();
+  const text = await resp.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return Response.json({ error: "Non-JSON response from Kie", status: resp.status, body: text.slice(0, 200) }, { status: 502 });
+  }
 
-  if (!resp.ok || data.code !== 200) {
-    return Response.json(
-      { error: data?.message || "Kie recordInfo failed", raw: data },
-      { status: 500 }
-    );
+  if (!resp.ok || data?.code !== 200) {
+    return Response.json({ error: data?.message || data?.msg || "Kie recordInfo failed", raw: data }, { status: 500 });
   }
 
   const state = data?.data?.state; // waiting | queuing | generating | success | fail
-  let resultUrls = [];
+  const failCode = data?.data?.failCode || "";
+  const failMsg = data?.data?.failMsg || "";
+
+  let remoteUrl = "";
 
   if (state === "success" && data?.data?.resultJson) {
     try {
       const parsed = JSON.parse(data.data.resultJson);
-      resultUrls = parsed?.resultUrls || [];
+      remoteUrl = parsed?.resultUrls?.[0] || "";
     } catch {}
   }
 
   return Response.json({
     taskId,
     state,
-    failMsg: data?.data?.failMsg || "",
-    resultUrls
+    failCode,
+    failMsg,
+    remoteUrl, // <-- important
   });
 }

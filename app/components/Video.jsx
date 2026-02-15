@@ -63,6 +63,7 @@ export default function Video({ src, poster, controls = true, muted = true, onUn
         controls={controls}
         muted={muted}
         playsInline
+        loop
         onClick={handleClick}
         style={{
           position: "absolute",

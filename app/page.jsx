@@ -154,6 +154,22 @@ export default function Home() {
           onChange={(updates) =>
             handleEmptyFeedConfigChange(activeFeedId, updates)
           }
+          onVideoReady={(video) => {
+            setFeeds((prev) => ({
+              ...prev,
+              [activeFeedId]: {
+                ...prev[activeFeedId],
+                videos: [{ src: video.src }],
+                questions: [
+                  {
+                    text: "Placeholder question?",
+                    options: ["A", "B", "C", "D"],
+                    correctIndex: 0,
+                  },
+                ],
+              },
+            }));
+          }}
           className="videoSlideWrapper"
         />
       ) : (
