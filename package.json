@@ -13,12 +13,14 @@
     "@azure/storage-blob": "^12.31.0",
     "mysql2": "^3.17.1",
     "next": "14.2.18",
+    "openai": "^6.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "25.2.3",
     "@types/react": "19.2.14",
+    "@types/node": "25.2.3",
     "eslint": "^8",
     "eslint-config-next": "14.2.18"
   }
