@@ -7,10 +7,10 @@ import LeftNav from "./components/LeftNav";
 const videos = [
   { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" },
   { src: "/videos/Steve Harvey be like： SHE SAID WHAT! [DoJQiFaLm9I].webm" },
-  {src: "/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm"}
+  {
+    src: "/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm",
+  },
 ];
-
-
 
 export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -32,23 +32,23 @@ export default function Home() {
     setCurrentVideoIndex(Math.max(0, Math.min(index, videos.length - 1)));
   }, []);
 
-  // function for calling LLM for searching
-  async function searchTest() {
-    const response = await fetch("/api/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        // put search input parameters in here
-        query: `socrates plato aristotle`,
-      }),
-    });
+  useEffect(() => {
+    // function for calling LLM for searching
+    async function searchTest() {
+      const response = await fetch("/api/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // put search input parameters in here
+          query: `socrates plato aristotle`,
+        }),
+      });
+    }
 
-      function testClick() {
-    console.log("button pressed");
     searchTest();
-  }
+  }, []);
   return (
     <main
       style={{
@@ -161,11 +161,12 @@ export default function Home() {
             border: "none",
             backgroundColor:
               currentVideoIndex === videos.length - 1 ? "#1a1a1a" : "#2a2a2a",
-            color:
-              currentVideoIndex === videos.length - 1 ? "#555" : "#fff",
+            color: currentVideoIndex === videos.length - 1 ? "#555" : "#fff",
             fontSize: "1.25rem",
             cursor:
-              currentVideoIndex === videos.length - 1 ? "not-allowed" : "pointer",
+              currentVideoIndex === videos.length - 1
+                ? "not-allowed"
+                : "pointer",
             transition: "background-color 0.15s ease",
           }}
         >
