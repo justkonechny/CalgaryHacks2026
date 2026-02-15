@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { createSoraVideo } from "@/lib/soraCreate";
+
 const inputStyle = {
   width: "100%",
   padding: "0.6rem 0.75rem",
@@ -19,14 +22,51 @@ const labelStyle = {
   color: "#888",
 };
 
+const buttonStyle = {
+  width: "100%",
+  padding: "0.6rem 0.75rem",
+  borderRadius: "8px",
+  border: "1px solid #2a2a2a",
+  backgroundColor: "#2a2a2a",
+  color: "#fff",
+  fontSize: "1rem",
+  fontFamily: "inherit",
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
 export default function EmptyFeedForm({
   topicPrompt = "",
   sources = "",
   difficulty = "medium",
+  threadId = null,
   onChange,
+  onVideoReady,
   className,
   style,
 }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleGenerate() {
+    const text = topicPrompt.trim();
+    if (!text || isGenerating) return;
+
+    setIsGenerating(true);
+    setError("");
+
+    const result = await createSoraVideo(text, threadId);
+
+    setIsGenerating(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    onVideoReady?.({ src: result.url });
+  }
+
   return (
     <div
       className={className}
@@ -106,6 +146,22 @@ export default function EmptyFeedForm({
             <option value="hard">Hard</option>
           </select>
         </div>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={!topicPrompt.trim() || isGenerating}
+          style={{
+            ...buttonStyle,
+            opacity: !topicPrompt.trim() || isGenerating ? 0.6 : 1,
+          }}
+        >
+          {isGenerating ? "Generating..." : "Generate video"}
+        </button>
+        {error ? (
+          <div style={{ fontSize: "0.85rem", color: "#e55" }}>
+            {error}
+          </div>
+        ) : null}
       </div>
     </div>
   );
