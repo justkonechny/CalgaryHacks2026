@@ -52,8 +52,16 @@ export async function POST(req) {
     const content = data.choices?.[0]?.message?.content;
 
     console.log(content);
+    const parsedContent = JSON.parse(content);
 
-    return new Response(JSON.stringify({ result: content }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        fact: parsedContent.fact,
+        question: parsedContent.question,
+        answers: parsedContent.answers,
+      }),
+      { status: 200 },
+    );
   } catch (error) {
     if (error.status === 429) {
       return new Response(

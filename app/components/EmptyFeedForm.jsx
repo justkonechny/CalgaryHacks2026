@@ -55,17 +55,62 @@ export default function EmptyFeedForm({
     setIsGenerating(true);
     setError("");
 
-    const result = await createSoraVideo(text, threadId);
+    // generate text
+    try {
+      await handleGenerateText();
 
-    setIsGenerating(false);
+      const result = await createSoraVideo(text, threadId);
 
-    if (result.error) {
-      setError(result.error);
-      return;
+      // setIsGenerating(false);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      onVideoReady?.({ src: result.url });
+    } catch (error) {
+      console.error("Generation error:", error);
+      setError(error.message || "Failed to generate video. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
-
-    onVideoReady?.({ src: result.url });
   }
+
+  // text generation and tts
+  const handleGenerateText = async () => {
+    try {
+      const response = await fetch("/api/generate-content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: topicPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Generation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Generation result:", data);
+
+      // save to database?
+      //TODO
+
+      // Play the audio immediately to test
+      // if (data.audioUrl) {
+      //   const audio = new Audio(data.audioUrl);
+      //   audio.play().catch((err) => console.error("Audio play error:", err));
+      //   console.log("Playing audio from:", data.audioUrl);
+      // }
+    } catch (error) {
+      console.error("Generation error:", error);
+      throw new Error("Failed to generate content. Please try again.");
+    }
+  };
 
   return (
     <div
@@ -133,9 +178,7 @@ export default function EmptyFeedForm({
           <select
             id="empty-feed-difficulty"
             value={difficulty}
-            onChange={(e) =>
-              onChange?.({ difficulty: e.target.value })
-            }
+            onChange={(e) => onChange?.({ difficulty: e.target.value })}
             style={{
               ...inputStyle,
               cursor: "pointer",
@@ -158,9 +201,7 @@ export default function EmptyFeedForm({
           {isGenerating ? "Generating..." : "Generate video"}
         </button>
         {error ? (
-          <div style={{ fontSize: "0.85rem", color: "#e55" }}>
-            {error}
-          </div>
+          <div style={{ fontSize: "0.85rem", color: "#e55" }}>{error}</div>
         ) : null}
       </div>
     </div>
