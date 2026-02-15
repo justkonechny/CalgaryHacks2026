@@ -1,159 +1,364 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import Video from "./components/Video";
+import VideoSlide from "./components/VideoSlide";
 import LeftNav from "./components/LeftNav";
-
-const videos = [
-  { src: "/videos/Lazer 🔵 VS 🟢 Orbital [2HxET-pqRjk].webm" },
-  { src: "/videos/Steve Harvey be like： SHE SAID WHAT! [DoJQiFaLm9I].webm" },
-  {
-    src: "/videos/Key & Peele S5E10 🤯 ｜ When “Comedy” Goes Way Too Far [ghwFg-JTRqU].webm",
-  },
-];
+import EmptyFeedForm from "./components/EmptyFeedForm";
+import "./page.css";
 
 export default function Home() {
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [userHasUnmuted, setUserHasUnmuted] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const feedRef = useRef(null);
+  const [feeds, setFeeds] = useState({});
+  const [activeFeedId, setActiveFeedId] = useState(null);
+  const [feedsLoading, setFeedsLoading] = useState(true);
+  const [feedContentLoading, setFeedContentLoading] = useState(false);
+  const [sectionIndex, setSectionIndex] = useState(0);
+  const [totalSections, setTotalSections] = useState(0);
+  const [answeredCorrectly, setAnsweredCorrectly] = useState([]);
+  const videoSlideRef = useRef(null);
 
-  const scrollToIndex = useCallback((index) => {
-    const el = feedRef.current;
-    if (!el) return;
-    const clamped = Math.max(0, Math.min(index, videos.length - 1));
-    el.scrollTo({ top: clamped * window.innerHeight, behavior: "smooth" });
+  const feedList = Object.values(feeds);
+  const activeFeed = activeFeedId ? feeds[activeFeedId] : null;
+  const currentVideos = activeFeed?.videos ?? [];
+  const currentQuestions = activeFeed?.questions ?? [];
+
+  const isOnQuestionSection =
+    currentQuestions.length > 0 && sectionIndex % 2 === 1;
+  const currentQuestionIndex = isOnQuestionSection
+    ? Math.floor(sectionIndex / 2)
+    : -1;
+  const currentQuestionAnswered =
+    currentQuestionIndex >= 0 &&
+    (answeredCorrectly[currentQuestionIndex] ?? false);
+  const canAdvancePastQuestion =
+    !isOnQuestionSection || currentQuestionAnswered;
+
+  // Load feed list on mount
+  useEffect(() => {
+    let cancelled = false;
+    setFeedsLoading(true);
+    fetch("/api/feeds", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = data.feeds || [];
+        const next = {};
+        list.forEach((r) => {
+          const id = String(r.id);
+          next[id] = {
+            id,
+            label: r.label || r.prompt || "Feed",
+            status: r.status,
+            createdAt: r.createdAt,
+            videos: [],
+            questions: [],
+            topicPrompt: "",
+            sources: "",
+            difficulty: "medium",
+          };
+        });
+        setFeeds(next);
+        setActiveFeedId((prev) => {
+          if (prev && next[prev]) return prev;
+          return list.length > 0 ? String(list[0].id) : null;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setFeeds({});
+      })
+      .finally(() => {
+        if (!cancelled) setFeedsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleFeedScroll = useCallback(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    const vh = window.innerHeight;
-    const index = Math.round(el.scrollTop / vh);
-    setCurrentVideoIndex(Math.max(0, Math.min(index, videos.length - 1)));
-  }, []);
-  return (
-    <main
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "stretch",
-        backgroundColor: "#0f0f0f",
-        overflow: "hidden",
-      }}
-    >
-      <LeftNav />
+  // Load feed content when active feed changes
+  useEffect(() => {
+    if (!activeFeedId) return;
+    let cancelled = false;
+    setFeedContentLoading(true);
+    fetch(`/api/feed?threadId=${encodeURIComponent(activeFeedId)}`, {
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const videos = (data.videos || []).map((v) => ({ src: v.src }));
+        const questions = data.questions || [];
+        setFeeds((prev) => ({
+          ...prev,
+          [activeFeedId]: {
+            ...prev[activeFeedId],
+            videos,
+            questions,
+          },
+        }));
+        setSectionIndex(0);
+        const count = videos.length * 2;
+        setTotalSections(count);
+        setAnsweredCorrectly([]);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setFeedContentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFeedId]);
 
-      <div
-        ref={feedRef}
-        className="feed-scroll"
-        onScroll={handleFeedScroll}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          height: "100vh",
-          overflowY: "auto",
-          overflowX: "hidden",
-          scrollSnapType: "y mandatory",
-          scrollBehavior: "smooth",
-        }}
+  const handleSelectFeed = useCallback(
+    (feedId) => {
+      setActiveFeedId(feedId);
+      setSectionIndex(0);
+      setAnsweredCorrectly([]);
+      const f = feeds[feedId];
+      const count = (f?.videos?.length ?? 0) * 2;
+      setTotalSections(count);
+    },
+    [feeds],
+  );
+
+  const handleCreateFeed = useCallback(async () => {
+    try {
+      const res = await fetch("/api/feeds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "New feed" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create feed");
+      const threadId = data.threadId;
+      if (threadId == null) throw new Error("No threadId returned");
+      const id = String(threadId);
+      setFeeds((prev) => ({
+        ...prev,
+        [id]: {
+          id,
+          label: "New feed",
+          status: "ready",
+          createdAt: new Date().toISOString(),
+          videos: [],
+          questions: [],
+          topicPrompt: "",
+          sources: "",
+          difficulty: "medium",
+        },
+      }));
+      setActiveFeedId(id);
+      setSectionIndex(0);
+      setTotalSections(0);
+      setAnsweredCorrectly([]);
+    } catch (e) {
+      console.error("Create feed failed:", e);
+    }
+  }, []);
+
+  const handleEmptyFeedConfigChange = useCallback((feedId, updates) => {
+    setFeeds((prev) => ({
+      ...prev,
+      [feedId]: { ...prev[feedId], ...updates },
+    }));
+  }, []);
+
+  const handleRenameFeed = useCallback(
+    async (feedId, newLabel) => {
+      const trimmed = newLabel?.trim() || feeds[feedId]?.label;
+      if (!trimmed) return;
+      try {
+        const res = await fetch(`/api/feeds/${feedId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: trimmed }),
+        });
+        if (!res.ok) return;
+        setFeeds((prev) => ({
+          ...prev,
+          [feedId]: { ...prev[feedId], label: trimmed },
+        }));
+      } catch (e) {
+        console.error("Rename feed failed:", e);
+      }
+    },
+    [feeds],
+  );
+
+  const handleSectionChange = useCallback((index, total) => {
+    setSectionIndex(index);
+    setTotalSections(total);
+  }, []);
+
+  const refetchActiveFeedContent = useCallback(() => {
+    if (!activeFeedId) return;
+    setFeedContentLoading(true);
+    fetch(`/api/feed?threadId=${encodeURIComponent(activeFeedId)}`, {
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const videos = (data.videos || []).map((v) => ({ src: v.src }));
+        const questions = data.questions || [];
+        setFeeds((prev) => ({
+          ...prev,
+          [activeFeedId]: {
+            ...prev[activeFeedId],
+            videos,
+            questions,
+          },
+        }));
+        setTotalSections(videos.length * 2);
+        setAnsweredCorrectly([]);
+      })
+      .catch(() => {})
+      .finally(() => setFeedContentLoading(false));
+  }, [activeFeedId]);
+
+  const goToPrev = useCallback(() => {
+    videoSlideRef.current?.cancelAutoScroll?.();
+    videoSlideRef.current?.scrollToSection(sectionIndex - 1);
+  }, [sectionIndex]);
+
+  const goToNext = useCallback(() => {
+    videoSlideRef.current?.cancelAutoScroll?.();
+    videoSlideRef.current?.scrollToSection(sectionIndex + 1);
+  }, [sectionIndex]);
+
+  const displayTotal =
+    totalSections > 0 ? totalSections : currentVideos.length * 2;
+
+  if (feedsLoading) {
+    return (
+      <main
+        className="pageLayout"
+        style={{ alignItems: "center", justifyContent: "center" }}
       >
-        {videos.map((item, i) => (
-          <section
-            key={i}
+        <span style={{ color: "#888" }}>Loading feeds...</span>
+      </main>
+    );
+  }
+
+  return (
+    <main className="pageLayout">
+      <LeftNav
+        feeds={feedList}
+        activeFeedId={activeFeedId}
+        onSelectFeed={handleSelectFeed}
+        onCreateFeed={handleCreateFeed}
+        onRenameFeed={handleRenameFeed}
+      />
+
+      {feedList.length === 0 ? (
+        <div
+          className="videoSlideWrapper"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#0f0f0f",
+            padding: "2rem",
+          }}
+        >
+          <p style={{ color: "#888", marginBottom: "1rem" }}>No feeds yet.</p>
+          <button
+            type="button"
+            onClick={handleCreateFeed}
             style={{
-              height: "100vh",
-              minHeight: "100vh",
-              scrollSnapAlign: "start",
-              scrollSnapStop: "always",
-              position: "relative",
+              padding: "0.6rem 1rem",
+              borderRadius: "8px",
+              border: "1px solid #3a3a3a",
+              backgroundColor: "#2a2a2a",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Create your first feed
+          </button>
+        </div>
+      ) : activeFeedId && !feedContentLoading && currentVideos.length === 0 ? (
+        <EmptyFeedForm
+          topicPrompt={activeFeed?.topicPrompt ?? ""}
+          sources={activeFeed?.sources ?? ""}
+          difficulty={activeFeed?.difficulty ?? "medium"}
+          threadId={activeFeedId}
+          onChange={(updates) =>
+            handleEmptyFeedConfigChange(activeFeedId, updates)
+          }
+          onVideoReady={() => refetchActiveFeedContent()}
+          className="videoSlideWrapper"
+        />
+      ) : activeFeedId && (feedContentLoading || currentVideos.length > 0) ? (
+        feedContentLoading && currentVideos.length === 0 ? (
+          <div
+            className="videoSlideWrapper"
+            style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              backgroundColor: "#0f0f0f",
             }}
           >
-            <Video
-              src={item.src}
-              poster={item.poster}
-              controls={false}
-              muted={!userHasUnmuted}
-              onUnmute={() => setUserHasUnmuted(true)}
-              style={{
-                width: "100%",
-                height: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-              }}
-            />
-          </section>
-        ))}
-      </div>
+            <span style={{ color: "#888" }}>Loading feed...</span>
+          </div>
+        ) : (
+          <VideoSlide
+            ref={videoSlideRef}
+            key={activeFeedId}
+            videos={currentVideos}
+            questions={currentQuestions}
+            onSectionChange={handleSectionChange}
+            onAnsweredCorrectlyChange={setAnsweredCorrectly}
+            className="videoSlideWrapper"
+          />
+        )
+      ) : null}
 
-      <aside
-        style={{
-          width: "80px",
-          minWidth: "80px",
-          height: "100vh",
-          backgroundColor: "#0f0f0f",
-          borderLeft: "1px solid #2a2a2a",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0.75rem",
-        }}
-      >
+      <aside className="navAside">
         <button
           type="button"
-          onClick={() => scrollToIndex(currentVideoIndex - 1)}
-          disabled={currentVideoIndex === 0}
-          aria-label="Previous video"
-          style={{
-            width: "48px",
-            height: "48px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "12px",
-            border: "none",
-            backgroundColor: currentVideoIndex === 0 ? "#1a1a1a" : "#2a2a2a",
-            color: currentVideoIndex === 0 ? "#555" : "#fff",
-            fontSize: "1.25rem",
-            cursor: currentVideoIndex === 0 ? "not-allowed" : "pointer",
-            transition: "background-color 0.15s ease",
-          }}
+          className="navBtn"
+          onClick={goToPrev}
+          disabled={sectionIndex === 0}
+          aria-label="Previous"
         >
-          ↑
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M18 15l-6-6-6 6" />
+          </svg>
         </button>
-        <span style={{ fontSize: "0.8rem", color: "#888" }}>
-          {currentVideoIndex + 1} / {videos.length}
+        <span className="navCounter">
+          {sectionIndex + 1} / {displayTotal}
         </span>
         <button
           type="button"
-          onClick={() => scrollToIndex(currentVideoIndex + 1)}
-          disabled={currentVideoIndex === videos.length - 1}
-          aria-label="Next video"
-          style={{
-            width: "48px",
-            height: "48px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "12px",
-            border: "none",
-            backgroundColor:
-              currentVideoIndex === videos.length - 1 ? "#1a1a1a" : "#2a2a2a",
-            color: currentVideoIndex === videos.length - 1 ? "#555" : "#fff",
-            fontSize: "1.25rem",
-            cursor:
-              currentVideoIndex === videos.length - 1
-                ? "not-allowed"
-                : "pointer",
-            transition: "background-color 0.15s ease",
-          }}
+          className="navBtn"
+          onClick={goToNext}
+          disabled={sectionIndex >= displayTotal - 1 || !canAdvancePastQuestion}
+          aria-label="Next"
         >
-          ↓
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </button>
       </aside>
     </main>

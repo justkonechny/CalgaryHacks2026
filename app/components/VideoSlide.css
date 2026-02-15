@@ -1,0 +1,13 @@
+.videoSlideScroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.videoSlideScroll::-webkit-scrollbar {
+  display: none;
+}
+.questionContent {
+  position: relative;
+  z-index: 11;
+}
+
