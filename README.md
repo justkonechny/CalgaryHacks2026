@@ -132,6 +132,7 @@ AZURE_STORAGE_CONTAINER_VIDEOS=videos\
 ### AI / Generation Keys
 
 KEI_API_KEY=your_api_key
+GROQ_API_KEY=your_api_key
 
 ------------------------------------------------------------------------
 
@@ -140,6 +141,7 @@ KEI_API_KEY=your_api_key
 npm install\
 npm install @azure/storage-blob\
 npm install mysql2
+npm install groq-sdk
 
 Run locally:
 
