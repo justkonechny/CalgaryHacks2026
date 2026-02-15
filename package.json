@@ -10,9 +10,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@azure/storage-blob": "^12.22.0",
+    "@azure/storage-blob": "^12.31.0",
+    "groq-sdk": "^0.37.0",
+    "install": "^0.13.0",
     "mysql2": "^3.17.1",
     "next": "14.2.18",
+    "npm": "^11.10.0",
     "openai": "^6.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

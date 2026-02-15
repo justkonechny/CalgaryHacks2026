@@ -1,12 +1,12 @@
 -- =========================
--- Database: Video
+-- Database: Reals
 -- =========================
 
-CREATE DATABASE IF NOT EXISTS video
+CREATE DATABASE IF NOT EXISTS reals
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE video;
+USE reals;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -149,6 +149,51 @@ CREATE TABLE Progress (
 ) ENGINE = InnoDB;
 
 -- =========================
+-- TABLE: VideoScriptAsset
+-- =========================
+
+CREATE TABLE VideoScriptAsset (
+  id INT AUTO_INCREMENT NOT NULL,
+
+  -- 1:1 with Video
+  videoId INT NOT NULL,
+
+  -- What you generated
+  scriptText VARCHAR(5000) NOT NULL,
+
+  -- JSON payloads (what you said you want long-term)
+  subtitlesJson JSON NULL,       -- normalized subtitle cues (start/end/text)
+  alignmentJson JSON NULL,       -- optional: char/word timing
+  providerResponseJson JSON NULL,-- raw full response from provider
+
+  -- Optional audio output if you store it separately
+  audioBlobName VARCHAR(512) NULL,
+  audioBlobUrl  VARCHAR(2048) NULL,
+  audioDurationMs INT NULL,
+
+  -- Metadata
+  provider ENUM('elevenlabs','groq','manual','other') NOT NULL DEFAULT 'elevenlabs',
+  voiceId VARCHAR(100) NULL,
+  modelId VARCHAR(100) NULL,
+  languageCode VARCHAR(20) NULL DEFAULT 'en',
+
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT PK_VideoScriptAsset PRIMARY KEY (id),
+
+  CONSTRAINT FK_VideoScriptAsset_Video FOREIGN KEY (videoId)
+    REFERENCES Video (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  -- enforce 1 row per video (recommended)
+  CONSTRAINT UQ_VideoScriptAsset_Video UNIQUE (videoId)
+) ENGINE=InnoDB;
+
+CREATE INDEX IX_VideoScriptAsset_VideoId ON VideoScriptAsset (videoId);
+CREATE INDEX IX_VideoScriptAsset_CreatedAt ON VideoScriptAsset (createdAt);
+
+-- =========================
 -- DUMMY DATA
 -- =========================
 
@@ -170,9 +215,6 @@ VALUES
 (2, 'difficulty', 'intermediate'),
 (3, 'difficulty', 'beginner');
 
--- NOTE:
--- blobUrl is the stable non-SAS URL you store long-term.
--- videoUrl can be a playable SAS URL (or NULL if not generated yet).
 INSERT INTO Video (
   id, threadId, `index`, scriptText,
   taskId, blobName, blobUrl,
@@ -182,27 +224,27 @@ VALUES
 (1, 1, 1,
  'Azure Blob Storage is a scalable object storage solution designed for unstructured data such as images and videos.',
  'task_az_001',
- 'video-task_az_001.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_az_001.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_az_001.mp4?sv=...SAS...',
+ 'video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4?sv=2026-02-06&se=2026-02-16T13%3A21%3A44Z&sr=b&sp=r&sig=w5KFZr5mJW0NQ%2Fen9h3BGT%2Fzc3GNpDTPVSa%2FSzhNv5Q%3D',
  60,
  '2026-02-14 15:31:00'),
 
 (2, 2, 1,
  'An eigenvalue represents the factor by which a matrix scales a vector during transformation.',
  'task_la_002',
- 'video-task_la_002.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_la_002.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_la_002.mp4?sv=...SAS...',
+ 'video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4?sv=2026-02-06&se=2026-02-16T13%3A21%3A44Z&sr=b&sp=r&sig=w5KFZr5mJW0NQ%2Fen9h3BGT%2Fzc3GNpDTPVSa%2FSzhNv5Q%3D',
  60,
  '2026-02-14 15:33:00'),
 
 (3, 3, 1,
  'SQL constraints are rules applied to table columns to enforce data integrity.',
  'task_sql_003',
- 'video-task_sql_003.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_sql_003.mp4',
- 'https://YOUR_ACCOUNT.blob.core.windows.net/YOUR_CONTAINER/video-task_sql_003.mp4?sv=...SAS...',
+ 'video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4',
+ 'https://calgaryhacks26.blob.core.windows.net/videos/video-429f1ded7a361872b92fcedb5d75d93a.mp4?sv=2026-02-06&se=2026-02-16T13%3A21%3A44Z&sr=b&sp=r&sig=w5KFZr5mJW0NQ%2Fen9h3BGT%2Fzc3GNpDTPVSa%2FSzhNv5Q%3D',
  60,
  '2026-02-14 15:36:00');
 
@@ -243,5 +285,76 @@ VALUES
 (1, 1, 1, '2026-02-14 15:40:00', '2026-02-14 15:40:00'),
 (2, 0, 2, '2026-02-14 15:45:00', NULL),
 (3, 1, 3, '2026-02-14 15:50:00', '2026-02-14 15:50:00');
+
+INSERT INTO VideoScriptAsset (
+  videoId,
+  scriptText,
+  subtitlesJson,
+  alignmentJson,
+  providerResponseJson,
+  audioBlobName,
+  audioBlobUrl,
+  audioDurationMs,
+  provider,
+  voiceId,
+  modelId,
+  languageCode,
+  createdAt
+)
+VALUES
+(
+  1,
+  'Azure Blob Storage is a scalable object storage solution designed for unstructured data such as images and videos.',
+  JSON_ARRAY(
+    JSON_OBJECT('startMs', 0, 'endMs', 1500, 'text', 'Azure Blob Storage is a scalable object storage solution'),
+    JSON_OBJECT('startMs', 1500, 'endMs', 3000, 'text', 'designed for unstructured data such as images and videos.')
+  ),
+  NULL,
+  NULL,
+  'audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  'https://calgaryhacks26.blob.core.windows.net/videos/audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  60000,
+  'elevenlabs',
+  'voice_demo_001',
+  'eleven_multilingual_v2',
+  'en',
+  '2026-02-15 10:10:00'
+),
+(
+  2,
+  'An eigenvalue represents the factor by which a matrix scales a vector during transformation.',
+  JSON_ARRAY(
+    JSON_OBJECT('startMs', 0, 'endMs', 1800, 'text', 'An eigenvalue represents the factor'),
+    JSON_OBJECT('startMs', 1800, 'endMs', 3600, 'text', 'by which a matrix scales a vector during transformation.')
+  ),
+  NULL,
+  NULL,
+  'audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  'https://calgaryhacks26.blob.core.windows.net/videos/audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  60000,
+  'elevenlabs',
+  'voice_demo_001',
+  'eleven_multilingual_v2',
+  'en',
+  '2026-02-15 10:12:00'
+),
+(
+  3,
+  'SQL constraints are rules applied to table columns to enforce data integrity.',
+  JSON_ARRAY(
+    JSON_OBJECT('startMs', 0, 'endMs', 1700, 'text', 'SQL constraints are rules applied to table columns'),
+    JSON_OBJECT('startMs', 1700, 'endMs', 3200, 'text', 'to enforce data integrity.')
+  ),
+  NULL,
+  NULL,
+  'audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  'https://calgaryhacks26.blob.core.windows.net/videos/audio-video-429f1ded7a361872b92fcedb5d75d93a.mp3',
+  60000,
+  'elevenlabs',
+  'voice_demo_001',
+  'eleven_multilingual_v2',
+  'en',
+  '2026-02-15 10:14:00'
+);
 
 SET FOREIGN_KEY_CHECKS = 1;

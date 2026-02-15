@@ -55,11 +55,42 @@ export default function EmptyFeedForm({
     setIsGenerating(true);
     setError("");
 
-    // generate text
+    // 1) Generate the script thread via Groq AND save prompt/difficulty/sources to DB (server-side).
+    // For now: just console.log the returned JSON.
     try {
       await handleGenerateText();
 
-      const result = await createSoraVideo(text, threadId);
+      const groqResp = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: text,
+          difficulty,
+          sources, // can be string (newline/comma) - server normalizes
+          threadId, // tells the API to also insert/update DB rows for this thread
+        }),
+      });
+
+      const groqData = await groqResp.json().catch(() => null);
+
+      if (!groqResp.ok) {
+        const msg =
+          groqData?.error ||
+          `Groq script generation failed (HTTP ${groqResp.status})`;
+        setIsGenerating(false);
+        setError(msg);
+        return;
+      }
+
+      console.log("Groq micro-learning thread JSON:", groqData);
+    } catch (e) {
+      setIsGenerating(false);
+      setError(String(e?.message || e));
+      return;
+    }
+
+    // 2) Generate the video from the prompt (existing flow)
+    const result = await createSoraVideo(text, threadId);
 
       // setIsGenerating(false);
 
@@ -154,6 +185,7 @@ export default function EmptyFeedForm({
             }}
           />
         </div>
+
         <div>
           <label htmlFor="empty-feed-sources" style={labelStyle}>
             Sources (optional)
@@ -171,6 +203,7 @@ export default function EmptyFeedForm({
             }}
           />
         </div>
+
         <div>
           <label htmlFor="empty-feed-difficulty" style={labelStyle}>
             Difficulty
@@ -189,6 +222,7 @@ export default function EmptyFeedForm({
             <option value="hard">Hard</option>
           </select>
         </div>
+
         <button
           type="button"
           onClick={handleGenerate}
@@ -200,6 +234,7 @@ export default function EmptyFeedForm({
         >
           {isGenerating ? "Generating..." : "Generate video"}
         </button>
+
         {error ? (
           <div style={{ fontSize: "0.85rem", color: "#e55" }}>{error}</div>
         ) : null}
