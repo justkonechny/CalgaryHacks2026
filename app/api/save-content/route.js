@@ -35,7 +35,7 @@ export async function POST(req) {
       let blobUrl = "https://calgaryhacks.blob.core.windows.net/" + blobName;
       const [videoResult] = await connection.query(
         `INSERT INTO Video (threadId, \`index\`, scriptText, taskId, blobName, blobUrl, videoUrl, duration, createdAt)
-        VALUES (?, 1, ?, ?, ?, ?, 60, NOW())`,
+        VALUES (?, 1, ?, ?, ?, ?, 10, NOW())`,
         [
           threadId,
           fact,

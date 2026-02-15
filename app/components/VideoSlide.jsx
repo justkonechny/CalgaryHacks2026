@@ -8,8 +8,13 @@ import "./VideoSlide.css";
 const AUTO_SCROLL_DELAY_MS = 1000;
 
 function normalizeVideo(item) {
-  if (typeof item === "string") return { src: item, poster: undefined };
-  return { src: item.src, poster: item.poster };
+  if (typeof item === "string") return { src: item, poster: undefined, audioSrc: undefined, audioDurationMs: undefined };
+  return {
+    src: item.src,
+    poster: item.poster,
+    audioSrc: item.audioSrc,
+    audioDurationMs: item.audioDurationMs,
+  };
 }
 
 function getMaxAllowedSectionIndex(answeredCorrectly) {
@@ -273,7 +278,7 @@ const VideoSlide = forwardRef(function VideoSlide(
           }}
         >
           {videos.map((item, i) => {
-            const { src, poster } = normalizeVideo(item);
+            const { src, poster, audioSrc, audioDurationMs } = normalizeVideo(item);
             return (
               <div
                 key={i}
@@ -291,6 +296,8 @@ const VideoSlide = forwardRef(function VideoSlide(
                 <Video
                   src={src}
                   poster={poster}
+                  audioSrc={audioSrc}
+                  audioDurationMs={audioDurationMs}
                   controls={false}
                   muted={!userHasUnmuted}
                   onUnmute={() => setUserHasUnmuted(true)}
@@ -327,7 +334,7 @@ const VideoSlide = forwardRef(function VideoSlide(
       }}
     >
       {videos.map((item, i) => {
-        const { src, poster } = normalizeVideo(item);
+        const { src, poster, audioSrc, audioDurationMs } = normalizeVideo(item);
         return (
           <div key={`section-${i}`}>
             <section
@@ -358,6 +365,8 @@ const VideoSlide = forwardRef(function VideoSlide(
                 <Video
                   src={src}
                   poster={poster}
+                  audioSrc={audioSrc}
+                  audioDurationMs={audioDurationMs}
                   controls={false}
                   muted={!userHasUnmuted}
                   onUnmute={() => setUserHasUnmuted(true)}

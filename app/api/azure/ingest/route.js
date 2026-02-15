@@ -66,6 +66,19 @@ export async function POST(req) {
       );
     }
 
+    const [updatedRows] = await pool.query(
+      `SELECT threadId, blobName, blobUrl, videoUrl FROM Video WHERE taskId = ?`,
+      [taskId]
+    );
+    const row = updatedRows[0];
+    if (row) {
+      await pool.query(
+        `UPDATE Video SET blobName = ?, blobUrl = ?, videoUrl = ?
+         WHERE threadId = ? AND taskId IS NULL`,
+        [row.blobName, row.blobUrl, row.videoUrl, row.threadId]
+      );
+    }
+
     await pool.query(
       `UPDATE Thread t
        JOIN Video v ON v.threadId = t.id

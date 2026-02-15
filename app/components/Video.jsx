@@ -2,12 +2,16 @@
 
 import { useRef, useEffect } from "react";
 
-export default function Video({ src, poster, controls = true, muted = true, onUnmute, className, style }) {
+export default function Video({ src, poster, audioSrc, audioDurationMs, controls = true, muted = true, onUnmute, className, style }) {
   const videoRef = useRef(null);
+  const audioRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    const audio = audioRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
     let playTimer;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -15,19 +19,26 @@ export default function Video({ src, poster, controls = true, muted = true, onUn
         if (!entry) return;
         if (entry.isIntersecting) {
           playTimer = setTimeout(() => video.play().catch(() => {}), 150);
+          if (audio && audioSrc) {
+            audio.play().catch(() => {});
+          }
         } else {
           clearTimeout(playTimer);
           video.pause();
+          if (audio && audioSrc) {
+            audio.pause();
+            audio.currentTime = 0;
+          }
         }
       },
       { threshold: 0.5 }
     );
-    observer.observe(video);
+    observer.observe(container);
     return () => {
       clearTimeout(playTimer);
       observer.disconnect();
     };
-  }, []);
+  }, [audioSrc]);
 
   const handleClick = () => {
     const video = videoRef.current;
@@ -46,6 +57,7 @@ export default function Video({ src, poster, controls = true, muted = true, onUn
 
   return (
     <div
+      ref={containerRef}
       className={`video-rounded ${className ?? ""}`.trim()}
       style={{
         position: "relative",
@@ -75,6 +87,14 @@ export default function Video({ src, poster, controls = true, muted = true, onUn
           cursor: "pointer",
         }}
       />
+      {audioSrc && (
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          style={{ display: "none" }}
+          playsInline
+        />
+      )}
     </div>
   );
 }
