@@ -1,44 +1,162 @@
-# Calgary Hacks
+# Reals - Calgary Hacks 2026
 
-A minimal Next.js web app starter. Clone this repo to get started on your project.
+## Turning Doomscrolling into Real Learning
 
-## Prerequisites
+**Reals** is an educational web application that transforms short-form
+scrolling into structured, gated micro-learning. Inspired by the
+fast-paced UX of platforms like TikTok, Reals delivers five short
+AI-generated micro-lecture videos - but you cannot scroll forward
+until you correctly answer a comprehension question.
 
-- **Node.js 18+** — [Download](https://nodejs.org/) if needed.
+Instead of:
 
-## Setup (for teammates)
+Watch → Forget → Scroll
 
-1. **Clone the repo**
-   ```bash
-   git clone <your-repo-url>
-   cd calgaryhacks
-   ```
+It becomes:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Watch → Retrieve → Confirm → Progress
 
-3. **Run the dev server**
-   ```bash
-   npm run dev
-   ```
+------------------------------------------------------------------------
 
-4. **Open the app** — In your browser go to [http://localhost:3000](http://localhost:3000).
+## Concept Overview
 
-## Scripts
+Users create educational "threads" by:
 
-| Command       | Description                |
-| ------------- | -------------------------- |
-| `npm run dev` | Start dev server (hot reload) |
-| `npm run build` | Build for production    |
-| `npm run start` | Run production build     |
-| `npm run lint`  | Run ESLint              |
+-   Entering a topic prompt\
+-   Explicitly specifying required sources (URLs, PDFs, textbooks,
+    notes)\
+-   Optionally selecting difficulty or constraints (e.g., "Use chapter 4
+    only")
 
-## Environment variables
+The system generates:
 
-Copy `.env.example` to `.env.local` and fill in any values your app needs. Do not commit `.env.local` or secrets.
+-   5 structured micro-lecture videos (\~60 seconds each)
+-   5 multiple-choice comprehension questions (1 per video)
 
-## Contributing
+All content is pre-generated and preloaded for smooth playback.
 
-Open a PR or follow your team’s branch naming and review process.
+------------------------------------------------------------------------
+
+## Core Features
+
+### Gated Progression
+
+-   Users must answer correctly to unlock the next video.
+-   Incorrect answers require retry + replay.
+-   Passive scrolling is eliminated.
+
+### Active Recall Reinforcement
+
+-   Forces retrieval before progression.
+-   Immediate feedback with explanation.
+
+### Structured Micro-Learning
+
+Each video includes: - \~10-second vertical looping background -
+AI-generated script - TTS narration - Burned-in subtitles - Focused
+concept coverage
+
+### Progress Tracking
+
+Tracks: - Attempts - Completion time - Mastery per concept
+
+------------------------------------------------------------------------
+
+## Tech Stack
+
+### Frontend
+- Next.js (React)
+
+### Backend
+- Next.js API routes (Node.js)
+
+### Database
+- MySQL (mysql2)
+
+### Storage
+- Azure Blob Storage
+
+### AI / APIs
+- KEI API — Primary AI orchestration layer
+- Sora 2 (via KEI API) — Short-form vertical video generation
+- Groq API — Prompt refinement & structured topic decomposition
+- TTS generation integrated into the AI pipeline
+
+------------------------------------------------------------------------
+
+## Architecture Overview
+
+1.  Thread Creation\
+    Prompt + sources stored in database
+
+2.  AI Generation Pipeline
+
+    -   Topic decomposition → 5 subtopics\
+    -   Script generation\
+    -   Quiz generation\
+    -   TTS audio\
+    -   Background clip\
+    -   Subtitle rendering\
+    -   Final MP4 render\
+    -   Upload to Azure Blob
+
+3.  Playback
+
+    -   Preloaded videos\
+    -   Swipe gated by quiz validation
+
+4.  Progress Tracking
+
+    -   Stored per user per video
+
+------------------------------------------------------------------------
+
+## Environment Variable Setup
+
+Create a `.env.local` file in the root of your project:
+
+### MySQL Configuration
+
+MYSQL_HOST=localhost\
+MYSQL_PORT=3306\
+MYSQL_USER=root\
+MYSQL_PASSWORD=your_password\
+MYSQL_DATABASE=video
+
+### Azure Blob Storage
+
+AZURE_STORAGE_ACCOUNT_NAME=your_storage_account_name\
+AZURE_STORAGE_ACCOUNT_KEY=your_storage_account_key\
+AZURE_STORAGE_CONTAINER_VIDEOS=videos\
+
+### AI / Generation Keys
+
+KEI_API_KEY=your_api_key
+
+------------------------------------------------------------------------
+
+## Installation
+
+npm install\
+npm install @azure/storage-blob\
+npm install mysql2
+
+Run locally:
+
+npm run dev
+
+Local connection:
+
+http://localhost:3000
+
+------------------------------------------------------------------------
+
+## Why Reals Is Different
+
+Reals preserves the engagement of short-form video while removing
+passive consumption. Every scroll is earned through demonstrated
+understanding.
+
+Real scrolling. Real recall. Real learning.
+
+------------------------------------------------------------------------
