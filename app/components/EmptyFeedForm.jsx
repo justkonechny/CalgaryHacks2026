@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createSoraVideo } from "@/lib/soraCreate";
 
 const inputStyle = {
   width: "100%",
@@ -108,16 +107,14 @@ export default function EmptyFeedForm({
   //   }
   // }
 
-  // text generation and tts
   async function handleGenerate() {
     const text = topicPrompt.trim();
-    if (!text || isGenerating) return;
+    if (!text || isGenerating || !threadId) return;
 
     setIsGenerating(true);
     setError("");
 
     try {
-      // 1) Generate the 5-unit micro-learning thread via Groq
       const groqResp = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,48 +133,90 @@ export default function EmptyFeedForm({
           groqData?.error ||
           `Groq script generation failed (HTTP ${groqResp.status})`;
         setError(msg);
+        setIsGenerating(false);
         return;
       }
 
-      console.log("Groq micro-learning thread JSON:", groqData);
-
-      // 2) Now generate TTS audio for each unit's script
-      console.log("Step 2: Generating TTS audio for each unit...");
-      const audioResp = await fetch("/api/generate-units-audio", {
+      const genResp = await fetch("/api/generate-thread", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          units: groqData.units,
           threadId,
+          units: groqData.units,
+          topic: text,
         }),
       });
 
-      const audioData = await audioResp.json().catch(() => null);
+      const genData = await genResp.json().catch(() => null);
 
-      if (!audioResp.ok) {
+      if (!genResp.ok) {
         const msg =
-          audioData?.error ||
-          `Audio generation failed (HTTP ${audioResp.status})`;
+          genData?.error ||
+          `Generation failed (HTTP ${genResp.status})`;
         setError(msg);
+        setIsGenerating(false);
         return;
       }
 
-      console.log("Audio generation complete:", audioData);
-
-      // 3) Generate video
-      const result = await createSoraVideo(text, threadId);
-
-      if (result.error) {
-        setError(result.error);
+      const taskId = genData.taskId;
+      if (!taskId) {
+        setError("No taskId returned");
+        setIsGenerating(false);
         return;
       }
 
-      onVideoReady?.({ src: result.url });
-    } catch (error) {
-      console.error("Generation error:", error);
-      setError(
-        error.message || "Failed to generate content. Please try again.",
-      );
+      const pollIntervalMs = 3000;
+      const maxAttempts = 120;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+
+        const statusResp = await fetch(
+          `/api/sora/status?taskId=${encodeURIComponent(taskId)}`
+        );
+        const status = await statusResp.json().catch(() => null);
+
+        if (status?.error) {
+          setError(status.error);
+          setIsGenerating(false);
+          return;
+        }
+
+        if (status?.state === "success") {
+          const remoteUrl = status.remoteUrl;
+          if (!remoteUrl) {
+            setError("Success but no remoteUrl returned");
+            setIsGenerating(false);
+            return;
+          }
+          const ingestResp = await fetch("/api/azure/ingest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId, remoteUrl }),
+          });
+          const ingestData = await ingestResp.json().catch(() => null);
+          if (ingestData?.error) {
+            setError(ingestData.error);
+          } else {
+            onVideoReady?.();
+          }
+          setIsGenerating(false);
+          return;
+        }
+
+        if (status?.state === "fail") {
+          const msg =
+            (status.failCode ? `(${status.failCode}) ` : "") +
+            (status.failMsg || "Video generation failed");
+          setError(msg);
+          setIsGenerating(false);
+          return;
+        }
+      }
+
+      setError("Timed out waiting for video");
+    } catch (err) {
+      console.error("Generation error:", err);
+      setError(err?.message || "Failed to generate content. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -266,10 +305,10 @@ export default function EmptyFeedForm({
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={!topicPrompt.trim() || isGenerating}
+          disabled={!threadId || !topicPrompt.trim() || isGenerating}
           style={{
             ...buttonStyle,
-            opacity: !topicPrompt.trim() || isGenerating ? 0.6 : 1,
+            opacity: !threadId || !topicPrompt.trim() || isGenerating ? 0.6 : 1,
           }}
         >
           {isGenerating ? "Generating..." : "Generate video"}

@@ -87,14 +87,15 @@ export async function POST(req) {
 
         console.log(`Audio uploaded for unit ${unitIndex}:`, signedUrl);
 
-        // 3) Extract blobUrl (without SAS token)
-        const blobUrl =
-          "https://calgaryhacks.blob.core.windows.net/" + blobName;
+        // 3) Build blobUrl with container so pathing is correct in DB
+        const containerName =
+          process.env.AZURE_STORAGE_CONTAINER_NAME || "videos";
+        const blobUrl = `https://calgaryhacks.blob.core.windows.net/${containerName}/${blobName}`;
 
         // 4) Insert Video record
         const [videoResult] = await connection.query(
           `INSERT INTO Video (threadId, \`index\`, scriptText, taskId, blobName, blobUrl, videoUrl, duration, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 60, NOW())`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, 10, NOW())`,
           [
             threadId,
             unitIndex,

@@ -84,7 +84,11 @@ export default function Home() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        const videos = (data.videos || []).map((v) => ({ src: v.src }));
+        const videos = (data.videos || []).map((v) => ({
+          src: v.src,
+          audioSrc: v.audioSrc ?? undefined,
+          audioDurationMs: v.audioDurationMs,
+        }));
         const questions = data.questions || [];
         setFeeds((prev) => ({
           ...prev,
@@ -197,7 +201,11 @@ export default function Home() {
     })
       .then((r) => r.json())
       .then((data) => {
-        const videos = (data.videos || []).map((v) => ({ src: v.src }));
+        const videos = (data.videos || []).map((v) => ({
+          src: v.src,
+          audioSrc: v.audioSrc ?? undefined,
+          audioDurationMs: v.audioDurationMs,
+        }));
         const questions = data.questions || [];
         setFeeds((prev) => ({
           ...prev,

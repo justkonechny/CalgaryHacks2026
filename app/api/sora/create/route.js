@@ -88,7 +88,7 @@ export async function POST(req) {
       }
       const [insertResult] = await pool.query(
         `INSERT INTO Video (threadId, \`index\`, scriptText, taskId, duration, blobName, blobUrl, videoUrl)
-         VALUES (?, ?, ?, ?, 1, NULL, NULL, NULL)`,
+         VALUES (?, ?, ?, ?, 10, NULL, NULL, NULL)`,
         [threadId, nextIndex, prompt, taskId]
       );
       const videoId = insertResult.insertId;
