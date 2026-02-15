@@ -31,24 +31,6 @@ export default function Home() {
     const index = Math.round(el.scrollTop / vh);
     setCurrentVideoIndex(Math.max(0, Math.min(index, videos.length - 1)));
   }, []);
-
-  useEffect(() => {
-    // function for calling LLM for searching
-    async function searchTest() {
-      const response = await fetch("/api/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          // put search input parameters in here
-          query: `socrates plato aristotle`,
-        }),
-      });
-    }
-
-    searchTest();
-  }, []);
   return (
     <main
       style={{
