@@ -48,6 +48,67 @@ export default function EmptyFeedForm({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
 
+  // async function handleGenerate() {
+  //   const text = topicPrompt.trim();
+  //   if (!text || isGenerating) return;
+
+  //   setIsGenerating(true);
+  //   setError("");
+
+  //   // 1) Generate the script thread via Groq AND save prompt/difficulty/sources to DB (server-side).
+  //   // For now: just console.log the returned JSON.
+  //   try {
+  //     // generate micro-learning thread
+  //     const groqResp = await fetch("/api/search", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         topic: text,
+  //         difficulty,
+  //         sources, // can be string (newline/comma) - server normalizes
+  //         threadId, // tells the API to also insert/update DB rows for this thread
+  //       }),
+  //     });
+
+  //     const groqData = await groqResp.json().catch(() => null);
+
+  //     if (!groqResp.ok) {
+  //       const msg =
+  //         groqData?.error ||
+  //         `Groq script generation failed (HTTP ${groqResp.status})`;
+  //       setIsGenerating(false);
+  //       setError(msg);
+  //       return;
+  //     }
+
+  //     console.log("Groq micro-learning thread JSON:", groqData);
+  //   } catch (e) {
+  //     setIsGenerating(false);
+  //     setError(String(e?.message || e));
+  //     return;
+  //   }
+
+  //   // 2) Generate the video from the prompt (existing flow)
+  //   try {
+  //     const result = await createSoraVideo(text, threadId);
+
+  //     // setIsGenerating(false);
+
+  //     if (result.error) {
+  //       setError(result.error);
+  //       return;
+  //     }
+
+  //     onVideoReady?.({ src: result.url });
+  //   } catch (error) {
+  //     console.error("Generation error:", error);
+  //     setError(error.message || "Failed to generate video. Please try again.");
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // }
+
+  // text generation and tts
   async function handleGenerate() {
     const text = topicPrompt.trim();
     if (!text || isGenerating) return;
@@ -55,19 +116,16 @@ export default function EmptyFeedForm({
     setIsGenerating(true);
     setError("");
 
-    // 1) Generate the script thread via Groq AND save prompt/difficulty/sources to DB (server-side).
-    // For now: just console.log the returned JSON.
     try {
-      await handleGenerateText();
-
+      // 1) Generate the 5-unit micro-learning thread via Groq
       const groqResp = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: text,
           difficulty,
-          sources, // can be string (newline/comma) - server normalizes
-          threadId, // tells the API to also insert/update DB rows for this thread
+          sources,
+          threadId,
         }),
       });
 
@@ -77,23 +135,37 @@ export default function EmptyFeedForm({
         const msg =
           groqData?.error ||
           `Groq script generation failed (HTTP ${groqResp.status})`;
-        setIsGenerating(false);
         setError(msg);
         return;
       }
 
       console.log("Groq micro-learning thread JSON:", groqData);
-    } catch (e) {
-      setIsGenerating(false);
-      setError(String(e?.message || e));
-      return;
-    }
 
-    // 2) Generate the video from the prompt (existing flow)
-    try {
+      // 2) Now generate TTS audio for each unit's script
+      console.log("Step 2: Generating TTS audio for each unit...");
+      const audioResp = await fetch("/api/generate-units-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          units: groqData.units,
+          threadId,
+        }),
+      });
+
+      const audioData = await audioResp.json().catch(() => null);
+
+      if (!audioResp.ok) {
+        const msg =
+          audioData?.error ||
+          `Audio generation failed (HTTP ${audioResp.status})`;
+        setError(msg);
+        return;
+      }
+
+      console.log("Audio generation complete:", audioData);
+
+      // 3) Generate video
       const result = await createSoraVideo(text, threadId);
-
-      // setIsGenerating(false);
 
       if (result.error) {
         setError(result.error);
@@ -103,46 +175,13 @@ export default function EmptyFeedForm({
       onVideoReady?.({ src: result.url });
     } catch (error) {
       console.error("Generation error:", error);
-      setError(error.message || "Failed to generate video. Please try again.");
+      setError(
+        error.message || "Failed to generate content. Please try again.",
+      );
     } finally {
       setIsGenerating(false);
     }
   }
-
-  // text generation and tts
-  const handleGenerateText = async () => {
-    try {
-      const response = await fetch("/api/generate-content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: topicPrompt,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Generation failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Generation result:", data);
-
-      // save to database?
-      //TODO
-
-      // Play the audio immediately to test
-      // if (data.audioUrl) {
-      //   const audio = new Audio(data.audioUrl);
-      //   audio.play().catch((err) => console.error("Audio play error:", err));
-      //   console.log("Playing audio from:", data.audioUrl);
-      // }
-    } catch (error) {
-      console.error("Generation error:", error);
-      throw new Error("Failed to generate content. Please try again.");
-    }
-  };
 
   return (
     <div
