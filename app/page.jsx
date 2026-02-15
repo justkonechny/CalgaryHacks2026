@@ -15,6 +15,7 @@ const videos = [
 export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [userHasUnmuted, setUserHasUnmuted] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
   const feedRef = useRef(null);
 
   const scrollToIndex = useCallback((index) => {
